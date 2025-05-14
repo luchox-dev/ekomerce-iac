@@ -1,0 +1,4 @@
+.certs
+conn_keys
+.DS_Store
+.terraform

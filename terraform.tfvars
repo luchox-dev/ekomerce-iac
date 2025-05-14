@@ -1,0 +1,6 @@
+key_name       = "ec2-access"
+aws_region     = "us-east-1"
+private_ip     = "0.0.0.0"
+redis_username = "backend"
+redis_password = "9supply-Available7-Eddie-detach-Neigh-4lath-Spruce-abrasive-Zeppelin3"
+# allowed_ip     = "52.55.41.117"
