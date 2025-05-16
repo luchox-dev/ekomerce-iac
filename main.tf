@@ -242,11 +242,6 @@ resource "aws_instance" "backend_instance" {
       "sudo apt update && sudo apt upgrade -y && sudo apt install -y curl build-essential certbot python3-certbot-nginx",
       "chmod +x /tmp/install_node.sh && cd /tmp",
       "./install_node.sh 20",
-      # "sudo mkdir -p /etc/letsencrypt/live/qleber.co/",
-      # "sudo mkdir -p /etc/letsencrypt/archive/qleber.co/",
-      # "sudo mv /tmp/.certs/* /etc/letsencrypt/archive/qleber.co/",
-      # "sudo ln -s /etc/letsencrypt/archive/qleber.co/fullchain1.pem /etc/letsencrypt/live/qleber.co/fullchain.pem",
-      # "sudo ln -s /etc/letsencrypt/archive/qleber.co/privkey1.pem /etc/letsencrypt/live/qleber.co/privkey.pem"
     ]
   }
 }

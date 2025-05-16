@@ -2,3 +2,7 @@
 conn_keys
 .DS_Store
 .terraform
+**/.claude/settings.local.json
+ssh_keys
+# Ignore all .tfstate files
+*.tfstate

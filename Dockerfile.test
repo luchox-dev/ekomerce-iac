@@ -1,0 +1,49 @@
+FROM ubuntu:24.04
+
+# Avoid prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Update and install dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    sudo \
+    python3 \
+    curl \
+    nginx \
+    python3-pip \
+    certbot \
+    iproute2 \
+    nano \
+    systemd-sysv \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create mock Certbot files and directories
+RUN mkdir -p /etc/letsencrypt/live/qleber.co && \
+    mkdir -p /etc/letsencrypt/cloudflare && \
+    mkdir -p /etc/letsencrypt/renewal-hooks/deploy && \
+    mkdir -p /var/log && \
+    mkdir -p /var/www/html
+
+# Create self-signed certificate for testing
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/letsencrypt/live/qleber.co/privkey.pem \
+    -out /etc/letsencrypt/live/qleber.co/fullchain.pem \
+    -subj "/CN=qleber.co"
+
+# Copy the script and make it executable
+COPY letsencrypt_wildcard_setup.py /usr/local/bin/
+RUN chmod +x /usr/local/bin/letsencrypt_wildcard_setup.py
+
+# Create a fake systemctl for Docker environment
+RUN echo '#!/bin/bash\nif [ "$1" = "reload" ] && [ "$2" = "nginx" ]; then\n  nginx -s reload\nfi\nif [ "$1" = "restart" ] && [ "$2" = "nginx" ]; then\n  nginx -s stop && nginx\nfi\nif [ "$1" = "is-active" ] && [ "$2" = "nginx" ]; then\n  if pgrep nginx > /dev/null; then\n    exit 0\n  else\n    exit 1\n  fi\nfi\nexit 0' > /usr/bin/systemctl && \
+    chmod +x /usr/bin/systemctl
+
+# Create script to run the test inside container
+RUN echo '#!/bin/bash\necho "Starting API mock test..."\necho "127.0.0.1 api.qleber.co" >> /etc/hosts\n\n# Create a mock environment to bypass the actual certificate generation\nmkdir -p /etc/letsencrypt/renewal-hooks/deploy\ntouch /var/log/letsencrypt-renewal.log\nchmod 644 /var/log/letsencrypt-renewal.log\n\n# Mock certbot execution\necho "MOCK_CERTBOT() { echo \"Using mock certificate\"; return 0; }" > /usr/local/bin/mock_functions.sh\nchmod +x /usr/local/bin/mock_functions.sh\n\n# Source the mock functions\nsource /usr/local/bin/mock_functions.sh\n\n# Call the script with environment variable to skip real certificate generation\nSKIP_CERT_GENERATION=true python3 /usr/local/bin/letsencrypt_wildcard_setup.py\n\n# Start nginx in foreground\nnginx -g "daemon off;"' > /usr/local/bin/run-test.sh && \
+    chmod +x /usr/local/bin/run-test.sh
+
+WORKDIR /root
+
+# Set CMD to bash by default
+CMD ["/bin/bash"]

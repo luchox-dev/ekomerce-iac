@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  # API mock service to test the reverse proxy
+  api:
+    image: jmalloc/echo-server
+    networks:
+      - letsencrypt-test
+    ports:
+      - "127.0.0.1:8080:8080"
+    
+  # Ubuntu with our script
+  ubuntu:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    networks:
+      - letsencrypt-test
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./letsencrypt_wildcard_setup.py:/usr/local/bin/letsencrypt_wildcard_setup.py
+    depends_on:
+      - api
+    tty: true
+    stdin_open: true
+    command: bash
+
+networks:
+  letsencrypt-test:
+    driver: bridge
