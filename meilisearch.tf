@@ -1,9 +1,3 @@
-# Generate a random master key for Meilisearch
-resource "random_password" "meilisearch_master_key" {
-  length  = 32
-  special = true
-}
-
 # Using the existing Ubuntu ARM AMI data source from main.tf
 
 # Create a security group for Meilisearch
@@ -43,7 +37,7 @@ resource "aws_security_group" "meilisearch_sg" {
 # Prepare user data script with the master key and allowed IP
 locals {
   meilisearch_user_data = templatefile("${path.module}/meilisearch_userdata.sh", {
-    master_key = random_password.meilisearch_master_key.result
+    master_key = var.meilisearch_master_key
     allowed_ip = data.aws_eip.backend_eip.public_ip
   })
   
@@ -52,7 +46,7 @@ locals {
   debug_user_data = replace(
     replace(
       local.meilisearch_user_data,
-      random_password.meilisearch_master_key.result,
+      var.meilisearch_master_key,
       "REDACTED_MASTER_KEY"
     ),
     data.aws_eip.backend_eip.public_ip,
@@ -112,6 +106,6 @@ output "meilisearch_endpoint" {
 }
 
 output "meilisearch_master_key" {
-  value     = random_password.meilisearch_master_key.result
+  value     = var.meilisearch_master_key
   sensitive = true
 }

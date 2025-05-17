@@ -1,0 +1,53 @@
+FROM ubuntu:24.04
+
+# Set environment variables
+ENV DEBIAN_FRONTEND=noninteractive
+ENV MEILISEARCH_HTTP_ADDR=0.0.0.0:7700
+ENV MEILISEARCH_MASTER_KEY=masterKey
+ENV MEILISEARCH_ENV=development
+ENV MEILISEARCH_NO_ANALYTICS=true
+
+# Create work directory
+WORKDIR /app
+
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y \
+    curl \
+    systemd \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create a user for Meilisearch
+RUN useradd -d /var/lib/meilisearch -s /bin/false -m -r meilisearch
+
+# Install Meilisearch
+RUN curl -L https://install.meilisearch.com | sh && \
+    mv ./meilisearch /usr/local/bin/ && \
+    chmod +x /usr/local/bin/meilisearch
+
+# Create directories for Meilisearch data
+RUN mkdir -p /var/lib/meilisearch/data /var/lib/meilisearch/dumps /var/lib/meilisearch/snapshots && \
+    chown -R meilisearch:meilisearch /var/lib/meilisearch && \
+    chmod 750 /var/lib/meilisearch
+
+# Create config file
+RUN echo "# Meilisearch configuration file\n\
+env = \"development\"\n\
+master_key = \"${MEILISEARCH_MASTER_KEY}\"\n\
+db_path = \"/var/lib/meilisearch/data\"\n\
+dump_dir = \"/var/lib/meilisearch/dumps\"\n\
+snapshot_dir = \"/var/lib/meilisearch/snapshots\"\n\
+http_addr = \"${MEILISEARCH_HTTP_ADDR}\"\n\
+log_level = \"INFO\"\n\
+max_indexing_memory = \"1 GiB\"\n\
+schedule_snapshot = 86400" > /etc/meilisearch.toml
+
+# Expose the Meilisearch port
+EXPOSE 7700
+
+# Set user to meilisearch for running the service
+USER meilisearch
+
+# Command to run Meilisearch
+CMD ["/usr/local/bin/meilisearch", "--config-file-path", "/etc/meilisearch.toml"]

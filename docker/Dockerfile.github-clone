@@ -29,7 +29,7 @@ RUN ssh-keygen -t rsa -b 4096 -C "dummy@example.com" -f /app/ssh_keys/id_rsa -N 
     chmod 600 /app/ssh_keys/id_rsa
 
 # Copy the script
-COPY github_repo_clone.py /app/
+COPY ../github_repo_clone.py /app/
 RUN chmod +x /app/github_repo_clone.py
 
 # Create a validation script
@@ -70,7 +70,7 @@ cat << EOF \n\
 \n\
 To use this container with real SSH keys, run:\n\
 \n\
-docker run -v /path/to/your/ssh/keys:/app/ssh_keys --rm -it $(docker build -q -f Dockerfile.github-clone .)\n\
+docker run -v /path/to/your/ssh/keys:/app/ssh_keys --rm -it $(docker build -q -f docker/Dockerfile.github-clone ..)\n\
 \n\
 Then inside the container:\n\
 \n\

@@ -13,7 +13,7 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the script
-COPY letsencrypt_wildcard_setup.py /usr/local/bin/
+COPY ../letsencrypt_wildcard_setup.py /usr/local/bin/
 RUN chmod +x /usr/local/bin/letsencrypt_wildcard_setup.py
 
 # Default command - this will check the script for syntax errors

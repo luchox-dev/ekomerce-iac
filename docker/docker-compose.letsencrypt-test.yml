@@ -12,15 +12,15 @@ services:
   # Ubuntu with our script
   ubuntu:
     build:
-      context: .
-      dockerfile: Dockerfile.test
+      context: ..
+      dockerfile: docker/Dockerfile.letsencrypt-test
     networks:
       - letsencrypt-test
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./letsencrypt_wildcard_setup.py:/usr/local/bin/letsencrypt_wildcard_setup.py
+      - ../letsencrypt_wildcard_setup.py:/usr/local/bin/letsencrypt_wildcard_setup.py
     depends_on:
       - api
     tty: true
