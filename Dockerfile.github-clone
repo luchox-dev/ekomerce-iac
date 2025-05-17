@@ -1,0 +1,85 @@
+FROM ubuntu:24.04
+
+# Set noninteractive mode for apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install required packages
+RUN apt-get update && \
+    apt-get install -y \
+    python3 \
+    python3-pip \
+    git \
+    openssh-client \
+    curl \
+    sudo \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create directories
+RUN mkdir -p /app /app/ssh_keys /var/log
+
+# Add a dummy SSH key for testing
+RUN mkdir -p /root/.ssh && \
+    chmod 700 /root/.ssh && \
+    echo "#!/bin/bash\necho 'This is a dummy script for testing'" > /app/dummy_setup.sh && \
+    chmod +x /app/dummy_setup.sh
+
+# Generate a dummy SSH key for testing
+RUN ssh-keygen -t rsa -b 4096 -C "dummy@example.com" -f /app/ssh_keys/id_rsa -N "" && \
+    chmod 600 /app/ssh_keys/id_rsa
+
+# Copy the script
+COPY github_repo_clone.py /app/
+RUN chmod +x /app/github_repo_clone.py
+
+# Create a validation script
+RUN echo '#!/bin/bash \n\
+set -e \n\
+echo "=======================================================" \n\
+echo "GitHub Repository Clone Script Validation" \n\
+echo "=======================================================" \n\
+echo "" \n\
+echo "Testing script with --help flag:" \n\
+python3 /app/github_repo_clone.py --help \n\
+echo "" \n\
+echo "=======================================================" \n\
+echo "Checking script syntax:" \n\
+python3 -m py_compile /app/github_repo_clone.py \n\
+echo "Syntax check passed!" \n\
+echo "" \n\
+echo "=======================================================" \n\
+echo "Setting SKIP_CLONE environment variable for testing without real credentials" \n\
+export SKIP_CLONE=true \n\
+echo "" \n\
+echo "Testing script with dummy SSH key (will show warning about GitHub connection):" \n\
+python3 /app/github_repo_clone.py --ssh-dir /app/ssh_keys --dest-dir /tmp/test-repo --repo git@github.com:example/test-repo.git || true \n\
+echo "" \n\
+echo "Testing with explicit strict-host-checking parameter:" \n\
+python3 /app/github_repo_clone.py --ssh-dir /app/ssh_keys --dest-dir /tmp/test-repo2 --repo git@github.com:example/test-repo.git --strict-host-checking=false || true \n\
+echo "" \n\
+echo "=======================================================" \n\
+echo "Validation complete!" \n\
+echo "To run with real SSH keys, mount them to /app/ssh_keys and run:" \n\
+echo "python3 /app/github_repo_clone.py --ssh-dir /app/ssh_keys --dest-dir /opt/app" \n\
+echo "=======================================================" \n\
+' > /app/validate.sh && chmod +x /app/validate.sh
+
+# Create a script to show how to use this in a real environment
+RUN echo '#!/bin/bash \n\
+cat << EOF \n\
+\n\
+To use this container with real SSH keys, run:\n\
+\n\
+docker run -v /path/to/your/ssh/keys:/app/ssh_keys --rm -it $(docker build -q -f Dockerfile.github-clone .)\n\
+\n\
+Then inside the container:\n\
+\n\
+python3 /app/github_repo_clone.py --ssh-dir /app/ssh_keys --dest-dir /opt/app\n\
+\n\
+EOF\n\
+' > /app/usage.sh && chmod +x /app/usage.sh
+
+WORKDIR /app
+
+# Set the default command
+CMD ["/bin/bash", "-c", "./validate.sh && echo '' && ./usage.sh && /bin/bash"]

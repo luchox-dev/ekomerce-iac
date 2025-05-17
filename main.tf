@@ -237,11 +237,53 @@ resource "aws_instance" "backend_instance" {
     destination = "/tmp/"
   }
 
+  provisioner "file" {
+    source      = "${path.module}/letsencrypt_wildcard_setup.py"
+    destination = "/tmp/letsencrypt_wildcard_setup.py"
+  }
+
+  # Add file provisioner for SSH keys
+  provisioner "file" {
+    source      = "${path.module}/ssh_keys/id_ec2_ed25519"
+    destination = "/home/ubuntu/id_ec2_ed25519"
+  }
+
+  provisioner "file" {
+    source      = "${path.module}/ssh_keys/id_ec2_ed25519.pub"
+    destination = "/home/ubuntu/id_ec2_ed25519.pub"
+  }
+
+  # Add file provisioner for GitHub clone script
+  provisioner "file" {
+    source      = "${path.module}/github_repo_clone.py"
+    destination = "/tmp/github_repo_clone.py"
+  }
+
   provisioner "remote-exec" {
     inline = [
-      "sudo apt update && sudo apt upgrade -y && sudo apt install -y curl build-essential certbot python3-certbot-nginx",
+      "sudo apt update && sudo apt upgrade -y && sudo apt install -y curl build-essential certbot python3-certbot-nginx git",
       "chmod +x /tmp/install_node.sh && cd /tmp",
       "./install_node.sh 20",
+      
+      # Setup SSH keys with proper permissions and start SSH agent
+      "mkdir -p /home/ubuntu/ssh_keys",
+      "mv /home/ubuntu/id_ec2_ed25519 /home/ubuntu/ssh_keys/",
+      "mv /home/ubuntu/id_ec2_ed25519.pub /home/ubuntu/ssh_keys/",
+      "chmod 600 /home/ubuntu/ssh_keys/id_ec2_ed25519",
+      "chmod 644 /home/ubuntu/ssh_keys/id_ec2_ed25519.pub",
+      "eval $(ssh-agent) && ssh-add /home/ubuntu/ssh_keys/id_ec2_ed25519",
+      
+      # Execute LetsEncrypt setup
+      "chmod +x /tmp/letsencrypt_wildcard_setup.py",
+      "sudo python3 /tmp/letsencrypt_wildcard_setup.py",
+      
+      # Clone GitHub repository with no prompt for host key verification
+      "chmod +x /tmp/github_repo_clone.py",
+      "sudo mkdir -p /opt/app",
+      "sudo chown ubuntu:ubuntu /opt/app",
+      "ssh-keyscan -t rsa,ecdsa,ed25519 github.com | sudo tee -a /etc/ssh/ssh_known_hosts",
+      "export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes'",
+      "sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo git@github.com:luchox-dev/qleber-platform.git"
     ]
   }
 }
