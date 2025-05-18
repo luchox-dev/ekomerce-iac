@@ -28,6 +28,7 @@ id_ed25519*
 .env.local
 .env.*.local
 .envrc
+env_files/
 
 # OS generated files
 .DS_Store
