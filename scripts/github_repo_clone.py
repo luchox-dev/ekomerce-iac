@@ -49,7 +49,7 @@ GITHUB_HOST = "github.com"
 MAX_RETRIES = 3
 RETRY_DELAY = 5  # seconds
 # GitHub SSH URL format: git@github.com:username/repository.git
-DEFAULT_REPO = "git@github.com:luchox-dev/qleber-platform.git"  # Will be overridden by command line parameter
+DEFAULT_REPO = "git@github.com:username/repository.git"  # Will be overridden by command line parameter
 
 # GitHub's known SSH key fingerprints (from https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
 GITHUB_KEY_FINGERPRINTS = {

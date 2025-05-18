@@ -19,9 +19,9 @@ We addressed these issues with the following changes:
 In `main.tf`, we changed how `GIT_SSH_COMMAND` is set:
 
 ```diff
-- "GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo git@github.com:luchox-dev/qleber-platform.git"
+- "GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo git@github.com:username/repository.git"
 + "export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes'",
-+ "sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo git@github.com:luchox-dev/qleber-platform.git"
++ "sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo ${REPOSITORY_URL}"
 ```
 
 The key change is to export the variable before calling sudo with -E, instead of setting it inline.
