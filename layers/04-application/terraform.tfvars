@@ -1,0 +1,6 @@
+aws_region     = "us-east-1"
+environment    = "dev"
+private_ip     = "0.0.0.0"
+redis_username = "backend"
+redis_password = "9supply-Available7-Eddie-detach-Neigh-4lath-Spruce-abrasive-Zeppelin3"
+github_repo    = "git@github.com:luchox-dev/qleber-platform.git"

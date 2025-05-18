@@ -1,77 +1,83 @@
 # E-Komerce Infrastructure as Code (IaC)
 
-This repository contains the infrastructure as code (IaC) resources for deploying and managing the E-Komerce platform. It provides a collection of Terraform configurations, Docker services, scripts, and documentation for automating the deployment and operation of e-commerce infrastructure.
+This repository contains the infrastructure as code (IaC) resources for deploying and managing the E-Komerce platform. It provides a collection of Terraform configurations, scripts, and documentation for automating the deployment and operation of e-commerce infrastructure.
 
 ## Overview
 
 The E-Komerce IaC repository is designed to:
 
 1. **Provision Cloud Infrastructure** - Using Terraform to create and manage AWS resources
-2. **Deploy Microservices** - Utilize Docker for containerized service deployment
+2. **Deploy Microservices** - Configure and manage application services
 3. **Automate Security** - Manage SSL certificates and secure application access
 4. **Enable Search Functionality** - Deploy and configure Meilisearch for fast, relevant product searches
-5. **Maintain CI/CD Integration** - Support continuous deployment of application code
+5. **Support Multiple Environments** - Enable dev, staging, and production deployments
 
 ## Repository Structure
 
+The repository follows a layered architecture approach to improve maintainability and simplify the deployment workflow:
+
 ```
 ekomerce-iac/
-├── documentation/         # All project documentation
-│   ├── docker/            # Docker-specific documentation
-│   ├── github-clone-script.md
-│   ├── letsencrypt-automation.md
-│   ├── meilisearch-aws-deployment.md
-│   └── meilisearch-local.md
+├── layers/                # Layered Terraform architecture
+│   ├── 01-core/           # Core infrastructure (VPC, security groups, EIPs)
+│   ├── 02-compute/        # Compute resources (EC2 instances, AMIs)
+│   ├── 03-database/       # Database resources (Redis, MeiliSearch)
+│   ├── 04-application/    # Application deployment (provisioners, scripts)
+│   └── 05-environment/    # Environment configuration (dev, staging, prod)
+├── documentation/         # Project documentation
 ├── docker/                # Docker service definitions
-│   ├── Dockerfile.github-clone
-│   ├── Dockerfile.letsencrypt
-│   ├── Dockerfile.letsencrypt-test
-│   ├── Dockerfile.meilisearch
-│   └── docker-compose.letsencrypt-test.yml
 ├── scripts/               # Automation scripts
 │   ├── create-s3-backend.sh
 │   ├── github_repo_clone.py
-│   ├── install_node.sh
-│   ├── install_redis_on_ubunut24.04.sh
-│   ├── letsencrypt_wildcard_setup.py
-│   ├── meilisearch_userdata.sh
-│   └── test_ssh_changes.sh
-├── main.tf                # Main Terraform configuration
-├── meilisearch.tf         # Meilisearch-specific Terraform config
-├── terraform.tfvars       # Terraform variable values
-├── terraform_examples.tf  # Example Terraform configurations
-└── variables.tf           # Terraform variable definitions
+│   ├── init-layers.sh     # Initialize all layers' state
+│   ├── validate-layers.sh # Validate all layers
+│   ├── apply-layers.sh    # Apply all layers in sequence
+│   └── ...
+├── conn_keys/             # Connection keys (gitignored)
+└── ssh_keys/              # SSH keys for deployments (gitignored)
 ```
 
-## Key Components
+## Layered Architecture
 
-### 1. Terraform Configurations
+### 1. Core Layer
 
-The repository provides Terraform configurations for provisioning:
+The core layer contains foundational infrastructure resources:
+- VPC and networking configuration
+- Common security groups
+- Elastic IPs for service endpoints
+- Core IAM roles and policies
 
-- AWS EC2 instances for application hosting
-- VPC, subnets, and security groups for network isolation
-- S3 backends for state management
-- Search service infrastructure (Meilisearch)
+### 2. Compute Layer
 
-### 2. Docker Services
+Manages all compute-related components:
+- EC2 instances definitions
+- AMI selection and configuration
+- Auto-scaling groups (when applicable)
+- Instance security groups
 
-The included Docker services support:
+### 3. Database Layer
 
-- **Let's Encrypt** - Wildcard SSL certificate generation and renewal
-- **GitHub Repository Deployment** - Secure cloning of private repositories
-- **Meilisearch** - Fast, relevant search capabilities for e-commerce
-- **Testing Environments** - Controlled testing of infrastructure components
+Handles all database and cache services:
+- Redis configuration
+- MeiliSearch setup
+- DynamoDB tables (when applicable)
 
-### 3. Automation Scripts
+This layer is designed to be modular, allowing each database service to be recreated independently.
 
-Scripts in this repository automate common operations:
+### 4. Application Layer
 
-- Terraform state backend creation
-- GitHub repository cloning with SSH authentication
-- SSL certificate automation with Cloudflare DNS validation
-- Node.js and Redis installation for application environments
-- Meilisearch deployment and configuration
+Deploys application-specific services:
+- Backend application provisioning
+- Configuration management
+- Service connectivity
+- Repository deployment
+
+### 5. Environment Layer
+
+Manages environment-specific configurations:
+- Environment variables for each environment (dev, staging, production)
+- Environment-specific resources and settings
+- Workspace-based isolation between environments
 
 ## Getting Started
 
@@ -79,42 +85,62 @@ Scripts in this repository automate common operations:
 
 - AWS CLI installed and configured
 - Terraform 1.0+ installed
-- Docker and Docker Compose installed
-- Basic understanding of IaC concepts
+- Docker and Docker Compose installed (optional, for local testing)
+- SSH keys for secure connections
 
 ### Initial Setup
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/your-org/ekomerce-iac.git
+   git clone git@github.com:your-org/ekomerce-iac.git
    cd ekomerce-iac
    ```
 
-2. Create an S3 backend for Terraform state:
+2. Create connection keys directory and add your EC2 access key:
    ```bash
-   ./scripts/create-s3-backend.sh your-terraform-state-bucket
+   mkdir -p conn_keys
+   cp /path/to/your/ec2-access.pem conn_keys/
+   chmod 600 conn_keys/ec2-access.pem
    ```
 
-3. Initialize Terraform:
+3. Initialize all layers:
    ```bash
-   terraform init
+   ./scripts/init-layers.sh
    ```
-
-4. Customize `terraform.tfvars` with your specific configuration values.
 
 ### Deploying Infrastructure
 
-1. Review the planned changes:
+1. Apply each layer in sequence:
    ```bash
-   terraform plan
+   ./scripts/apply-layers.sh dev  # Replace 'dev' with desired environment
    ```
 
-2. Apply the Terraform configuration:
+   This will:
+   - Create all core infrastructure
+   - Set up compute resources
+   - Configure database services
+   - Deploy application components
+   - Apply environment-specific settings
+
+2. Alternatively, deploy specific layers:
    ```bash
-   terraform apply
+   cd layers/01-core
+   terraform apply -var="environment=dev"
    ```
 
-3. After deployment, Terraform will output important information like IP addresses and endpoints.
+## Managing Multiple Environments
+
+The infrastructure supports multiple environments using Terraform workspaces:
+
+```bash
+# Create a new environment
+cd layers/01-core
+terraform workspace new staging
+terraform apply -var="environment=staging"
+
+# Or use the script for all layers
+./scripts/apply-layers.sh staging
+```
 
 ## Documentation
 
@@ -126,53 +152,22 @@ For detailed information about specific components, refer to the documentation d
 - [GitHub Clone Script](documentation/github-clone-script.md)
 - [Docker Services](documentation/docker/index.md)
 
-## Common Operations
+## Best Practices
 
-### Adding a New Infrastructure Component
+1. **State Management**:
+   - Each layer maintains its own state file
+   - Use remote state with S3 backend and DynamoDB locking
+   - Reference outputs from other layers using `terraform_remote_state`
 
-1. Create a new `.tf` file in the root directory
-2. Define the resources and variables needed
-3. Add documentation in the documentation directory
-4. Update this README if necessary
+2. **Security**:
+   - Store sensitive values in Terraform variables, not directly in code
+   - Use environment-specific security settings
+   - Restrict access using security groups and IAM policies
 
-### Building Docker Images
-
-```bash
-# Build all Docker images
-docker build -t github-clone-service -f docker/Dockerfile.github-clone .
-docker build -t letsencrypt-service -f docker/Dockerfile.letsencrypt .
-docker build -t meilisearch-service -f docker/Dockerfile.meilisearch .
-```
-
-### Running Tests
-
-```bash
-# Test Let's Encrypt certificate automation
-docker-compose -f docker/docker-compose.letsencrypt-test.yml up -d
-docker exec docker-ubuntu-1 /usr/local/bin/run-test.sh
-docker-compose -f docker/docker-compose.letsencrypt-test.yml down
-```
-
-## Best Practices for Production
-
-1. **Security**:
-   - Change all default passwords and API keys
-   - Use environment variables for secrets
-   - Restrict access to specific IP addresses
-
-2. **State Management**:
-   - Use remote state with encryption
-   - Implement state locking
-   - Consider using Terraform Cloud for team environments
-
-3. **Monitoring**:
-   - Set up monitoring for all deployed services
-   - Configure alerting for critical failures
-   - Implement logging solutions
-
-## License
-
-This project is licensed under the [Your License Type] - see the LICENSE file for details.
+3. **Modularity**:
+   - Keep each layer focused on a specific aspect of infrastructure
+   - Define clear interfaces between layers with outputs and remote state
+   - Enable independent updates to specific layers
 
 ## Contributing
 

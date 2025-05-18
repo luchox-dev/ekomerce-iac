@@ -16,7 +16,7 @@ docker run -v ~/.ssh:/app/ssh_keys \
   python3 /app/github_repo_clone.py \
   --ssh-dir /app/ssh_keys \
   --dest-dir /tmp/test-repo \
-  --repo git@github.com:luchox-dev/qleber-platform.git \
+  --repo ${GITHUB_REPO:-git@github.com:luchox-dev/qleber-platform.git} \
   --verbose
 
 # Note: The above assumes you have SSH keys in ~/.ssh that can access the repository
