@@ -36,7 +36,7 @@ resource "aws_security_group" "meilisearch_sg" {
 
 # Prepare user data script with the master key and allowed IP
 locals {
-  meilisearch_user_data = templatefile("${path.module}/meilisearch_userdata.sh", {
+  meilisearch_user_data = templatefile("${path.module}/scripts/meilisearch_userdata.sh", {
     master_key = var.meilisearch_master_key
     allowed_ip = data.aws_eip.backend_eip.public_ip
   })

@@ -8,7 +8,7 @@ resource "aws_instance" "example_backend" {
 
   # Upload script to the instance
   provisioner "file" {
-    source      = "${path.module}/github_repo_clone.py"
+    source      = "${path.module}/scripts/github_repo_clone.py"
     destination = "/tmp/github_repo_clone.py"
   }
 
@@ -62,13 +62,13 @@ resource "aws_instance" "example_backend_instance" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/install_node.sh"
+    source      = "${path.module}/scripts/install_node.sh"
     destination = "/tmp/install_node.sh"
   }
 
   # Add file provisioner for GitHub clone script
   provisioner "file" {
-    source      = "${path.module}/github_repo_clone.py"
+    source      = "${path.module}/scripts/github_repo_clone.py"
     destination = "/tmp/github_repo_clone.py"
   }
 

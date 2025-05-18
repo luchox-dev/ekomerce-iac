@@ -100,7 +100,7 @@ resource "aws_instance" "redis_instance" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/install_redis_on_ubunut24.04.sh"
+    source      = "${path.module}/scripts/install_redis_on_ubunut24.04.sh"
     destination = "/tmp/install_redis_on_ubunut24.04.sh"
   }
 
@@ -208,7 +208,7 @@ resource "aws_instance" "backend_instance" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/install_node.sh"
+    source      = "${path.module}/scripts/install_node.sh"
     destination = "/tmp/install_node.sh"
   }
 
@@ -218,7 +218,7 @@ resource "aws_instance" "backend_instance" {
   }
 
   provisioner "file" {
-    source      = "${path.module}/letsencrypt_wildcard_setup.py"
+    source      = "${path.module}/scripts/letsencrypt_wildcard_setup.py"
     destination = "/tmp/letsencrypt_wildcard_setup.py"
   }
 
@@ -235,7 +235,7 @@ resource "aws_instance" "backend_instance" {
 
   # Add file provisioner for GitHub clone script
   provisioner "file" {
-    source      = "${path.module}/github_repo_clone.py"
+    source      = "${path.module}/scripts/github_repo_clone.py"
     destination = "/tmp/github_repo_clone.py"
   }
 
