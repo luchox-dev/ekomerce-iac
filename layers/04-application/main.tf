@@ -10,7 +10,7 @@ terraform {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "application/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }
@@ -26,9 +26,10 @@ data "terraform_remote_state" "core" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "core/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 # Reference compute layer for EC2 instances
@@ -38,9 +39,10 @@ data "terraform_remote_state" "compute" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "compute/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 # Reference database layer for DB instances
@@ -50,9 +52,10 @@ data "terraform_remote_state" "database" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "database/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 # Define null_resource for local-only modifications and provisioners
@@ -73,9 +76,8 @@ resource "null_resource" "backend_provisioner" {
     user        = "ubuntu"
     host        = data.terraform_remote_state.core.outputs.backend_eip_public_ip
     private_key = file("${path.module}/../../conn_keys/ec2-access.pem")
-  }
+  }  
 
-  # Upload scripts and SSH keys
   provisioner "file" {
     source      = "${path.module}/../../scripts/install_node.sh"
     destination = "/tmp/install_node.sh"
@@ -101,7 +103,6 @@ resource "null_resource" "backend_provisioner" {
     destination = "/home/ubuntu/id_ec2_ed25519.pub"
   }
 
-  # Execute setup scripts
   provisioner "remote-exec" {
     inline = [
       "sudo apt update && sudo apt upgrade -y && sudo apt install -y curl build-essential certbot python3-certbot-nginx git",
@@ -129,6 +130,7 @@ resource "null_resource" "backend_provisioner" {
       "sudo -E python3 /tmp/github_repo_clone.py --ssh-dir /home/ubuntu/ssh_keys --dest-dir /opt/app --repo ${var.github_repo}"
     ]
   }
+
 }
 
 # Redis provisioner
@@ -136,33 +138,35 @@ resource "null_resource" "redis_provisioner" {
   # Trigger on instance ID or script changes
   triggers = {
     instance_id = data.terraform_remote_state.database.outputs.redis_instance_id
-    script_hash = filesha256("${path.module}/../../scripts/install_redis_on_ubunut24.04.sh")
+    script_hash = filesha256("${path.module}/../../scripts/install_redis_on_ubuntu24.04.sh")
   }
 
   # Connection settings for the Redis instance
   connection {
     type        = "ssh"
     user        = "ubuntu"
-    host        = data.terraform_remote_state.database.outputs.redis_instance_public_ip
+    host        = data.terraform_remote_state.core.outputs.redis_eip_public_ip  # Using actual public IP
     private_key = file("${path.module}/../../conn_keys/ec2-access.pem")
+    timeout     = "5m"  # Increased timeout for SSH connection
+    agent       = false # Disable agent forwarding
   }
 
   # Upload Redis installation script
   provisioner "file" {
-    source      = "${path.module}/../../scripts/install_redis_on_ubunut24.04.sh"
-    destination = "/tmp/install_redis_on_ubunut24.04.sh"
+    source      = "${path.module}/../../scripts/install_redis_on_ubuntu24.04.sh"
+    destination = "/tmp/install_redis_on_ubuntu24.04.sh"
   }
 
   # Execute Redis installation
   provisioner "remote-exec" {
     inline = [
-      "export PRIVATE_IP=${var.private_ip}",
+      "export PRIVATE_IP=0.0.0.0",  # Using actual private IP
       "export REDIS_USERNAME=${var.redis_username}",
       "export REDIS_PASSWORD=${var.redis_password}",
-      "export ALLOWED_IP=${data.terraform_remote_state.core.outputs.backend_eip_public_ip}",
+      "export ALLOWED_IP=${data.terraform_remote_state.core.outputs.backend_eip_public_ip}",  # Using actual public IP
       "sudo apt update && sudo apt upgrade -y",
-      "chmod +x /tmp/install_redis_on_ubunut24.04.sh",
-      "sudo -E /tmp/install_redis_on_ubunut24.04.sh"
+      "chmod +x /tmp/install_redis_on_ubuntu24.04.sh",
+      "sudo -E /tmp/install_redis_on_ubuntu24.04.sh"
     ]
   }
 

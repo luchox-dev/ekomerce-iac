@@ -40,7 +40,7 @@ locals {
 
 # Create the EC2 instance for Meilisearch
 resource "aws_instance" "meilisearch_instance" {
-  ami           = data.terraform_remote_state.compute.outputs.ubuntu_arm_ami_id
+  ami           = data.aws_ami.ubuntu_arm64.id
   instance_type = "t4g.micro"
   key_name      = data.terraform_remote_state.core.outputs.key_name
 

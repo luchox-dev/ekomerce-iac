@@ -22,7 +22,7 @@ from pathlib import Path
 # Configuration Variables
 DOMAIN = '*.qleber.co'  # Wildcard domain
 EMAIL = 'luis@qleber.co'  # Contact email for Let's Encrypt
-DNS_API_KEY = 'aK7fDaYfuVifBm1aiZ0F_JYR2n7VoE9iX-7GUIZz'  # Cloudflare API Key
+DNS_API_KEY = 'l7uFNcaqJ6ZXM9hnpjMnxyKzy0ArqfzOQ_YVjJeR'  # Cloudflare API Key
 BASE_DOMAIN = DOMAIN.replace('*.', '')  # Extract base domain (qleber.co)
 API_SUBDOMAIN = f"api.{BASE_DOMAIN}"  # API subdomain
 API_UPSTREAM_PORT = 8080  # Local port where API is running

@@ -32,7 +32,7 @@ resource "aws_security_group" "redis_sg" {
 
 # Create an EC2 instance with 40GB of general purpose storage for Redis
 resource "aws_instance" "redis_instance" {
-  ami           = data.terraform_remote_state.compute.outputs.ubuntu_amd64_ami_id
+  ami           = data.aws_ami.ubuntu_amd64.id
   instance_type = "t2.micro"
   key_name      = data.terraform_remote_state.core.outputs.key_name
 

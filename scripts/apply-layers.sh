@@ -15,6 +15,7 @@ AUTO_APPROVE=0
 PLAN_ONLY=0
 
 # Parse command-line options
+DESTROY=0
 while [[ $# -gt 0 ]]; do
   case $1 in
     -a|--auto-approve)
@@ -28,6 +29,10 @@ while [[ $# -gt 0 ]]; do
     -e|--environment)
       ENVIRONMENT="$2"
       shift 2
+      ;;
+    -d|--destroy)
+      DESTROY=1
+      shift
       ;;
     *)
       # Skip unknown option
@@ -74,11 +79,28 @@ echo "" | tee -a "$LOG_FILE"
 TOTAL_LAYERS=${#LAYERS[@]}
 SUCCESSFUL_LAYERS=0
 
-# Apply each layer
+# Get layers in correct order (reverse order for destroy)
+if [ $DESTROY -eq 1 ]; then
+  # Reverse the order of layers for destroy
+  REVERSED_LAYERS=()
+  for (( i=${#LAYERS[@]}-1; i>=0; i-- )); do
+    REVERSED_LAYERS+=("${LAYERS[$i]}")
+  done
+  LAYERS=("${REVERSED_LAYERS[@]}")
+  echo "Destroy mode: Layers will be processed in reverse order" | tee -a "$LOG_FILE"
+fi
+
+# Apply or destroy each layer
 for layer in "${LAYERS[@]}"; do
-  echo "=========================================" | tee -a "$LOG_FILE"
-  echo "Applying layer: $layer for environment $ENVIRONMENT" | tee -a "$LOG_FILE"
-  echo "=========================================" | tee -a "$LOG_FILE"
+  if [ $DESTROY -eq 1 ]; then
+    echo "=========================================" | tee -a "$LOG_FILE"
+    echo "Destroying layer: $layer for environment $ENVIRONMENT" | tee -a "$LOG_FILE"
+    echo "=========================================" | tee -a "$LOG_FILE"
+  else
+    echo "=========================================" | tee -a "$LOG_FILE"
+    echo "Applying layer: $layer for environment $ENVIRONMENT" | tee -a "$LOG_FILE"
+    echo "=========================================" | tee -a "$LOG_FILE"
+  fi
   
   # Change to the layer directory using absolute path
   LAYER_DIR="$ROOT_DIR/layers/$layer"
@@ -101,35 +123,58 @@ for layer in "${LAYERS[@]}"; do
     continue
   fi
   
-  # First run a plan
-  echo "Planning changes for layer $layer..." | tee -a "$LOG_FILE"
-  terraform plan -var="environment=$ENVIRONMENT" -out=tfplan | tee -a "$LOG_FILE"
-  
-  # If plan-only mode, skip apply
-  if [ $PLAN_ONLY -eq 1 ]; then
-    echo "Plan-only mode, skipping apply for layer $layer" | tee -a "$LOG_FILE"
-    ((SUCCESSFUL_LAYERS++))
-    continue
+  # Use environment-specific tfvars file if available
+  TFVARS_FILE="terraform.tfvars"
+  if [ -f "terraform.tfvars.${ENVIRONMENT}" ]; then
+    TFVARS_FILE="terraform.tfvars.${ENVIRONMENT}"
+    echo "Using environment-specific variables file: $TFVARS_FILE" | tee -a "$LOG_FILE"
   fi
-  
-  # Apply Terraform configuration
-  echo "Applying changes for layer $layer..." | tee -a "$LOG_FILE"
-  
-  if [ $AUTO_APPROVE -eq 1 ]; then
-    # Auto-approve mode
-    if terraform apply -auto-approve -var="environment=$ENVIRONMENT" | tee -a "$LOG_FILE"; then
-      echo "Layer $layer applied successfully." | tee -a "$LOG_FILE"
-      ((SUCCESSFUL_LAYERS++))
+
+  if [ $DESTROY -eq 1 ]; then
+    # Destroy infrastructure
+    echo "Planning destruction for layer $layer..." | tee -a "$LOG_FILE"
+    
+    if [ $AUTO_APPROVE -eq 1 ]; then
+      # Auto-approve mode
+      if terraform destroy -auto-approve -var="environment=$ENVIRONMENT" -var-file="$TFVARS_FILE" | tee -a "$LOG_FILE"; then
+        echo "Layer $layer destroyed successfully." | tee -a "$LOG_FILE"
+        ((SUCCESSFUL_LAYERS++))
+      else
+        echo "ERROR: Failed to destroy layer $layer" | tee -a "$LOG_FILE"
+      fi
     else
-      echo "ERROR: Failed to apply layer $layer" | tee -a "$LOG_FILE"
+      # Interactive mode
+      if terraform destroy -var="environment=$ENVIRONMENT" -var-file="$TFVARS_FILE" | tee -a "$LOG_FILE"; then
+        echo "Layer $layer destroyed successfully." | tee -a "$LOG_FILE"
+        ((SUCCESSFUL_LAYERS++))
+      else
+        echo "ERROR: Failed to destroy layer $layer" | tee -a "$LOG_FILE"
+      fi
     fi
   else
-    # Interactive mode
-    if terraform apply -var="environment=$ENVIRONMENT" | tee -a "$LOG_FILE"; then
-      echo "Layer $layer applied successfully." | tee -a "$LOG_FILE"
-      ((SUCCESSFUL_LAYERS++))
+    # First run a plan
+    echo "Planning changes for layer $layer..." | tee -a "$LOG_FILE"
+    if terraform plan -var="environment=$ENVIRONMENT" -var-file="$TFVARS_FILE" -out=tfplan | tee -a "$LOG_FILE"; then
+      echo "Planning completed successfully for layer $layer." | tee -a "$LOG_FILE"
+      
+      # If plan-only mode, skip apply
+      if [ $PLAN_ONLY -eq 1 ]; then
+        echo "Plan-only mode, skipping apply for layer $layer" | tee -a "$LOG_FILE"
+        ((SUCCESSFUL_LAYERS++))
+        continue
+      fi
+      
+      # Apply Terraform configuration using the tfplan file
+      echo "Applying changes for layer $layer..." | tee -a "$LOG_FILE"
+      
+      if terraform apply tfplan | tee -a "$LOG_FILE"; then
+        echo "Layer $layer applied successfully." | tee -a "$LOG_FILE"
+        ((SUCCESSFUL_LAYERS++))
+      else
+        echo "ERROR: Failed to apply layer $layer" | tee -a "$LOG_FILE"
+      fi
     else
-      echo "ERROR: Failed to apply layer $layer" | tee -a "$LOG_FILE"
+      echo "ERROR: Planning failed for layer $layer" | tee -a "$LOG_FILE"
     fi
   fi
   
@@ -138,14 +183,22 @@ done
 
 # Print summary
 echo "=========================================" | tee -a "$LOG_FILE"
-echo "Apply Summary" | tee -a "$LOG_FILE"
+if [ $DESTROY -eq 1 ]; then
+  echo "Destroy Summary" | tee -a "$LOG_FILE"
+else
+  echo "Apply Summary" | tee -a "$LOG_FILE"
+fi
 echo "=========================================" | tee -a "$LOG_FILE"
 echo "Environment: $ENVIRONMENT" | tee -a "$LOG_FILE"
 echo "Total layers: $TOTAL_LAYERS" | tee -a "$LOG_FILE"
 echo "Successfully processed: $SUCCESSFUL_LAYERS" | tee -a "$LOG_FILE"
 
 if [ $SUCCESSFUL_LAYERS -eq $TOTAL_LAYERS ]; then
-  echo "All layers processed successfully for environment: $ENVIRONMENT!" | tee -a "$LOG_FILE"
+  if [ $DESTROY -eq 1 ]; then
+    echo "All layers destroyed successfully for environment: $ENVIRONMENT!" | tee -a "$LOG_FILE"
+  else
+    echo "All layers processed successfully for environment: $ENVIRONMENT!" | tee -a "$LOG_FILE"
+  fi
   echo "Detailed logs available at: $LOG_FILE" | tee -a "$LOG_FILE"
 else
   echo "WARNING: Some layers failed processing." | tee -a "$LOG_FILE"

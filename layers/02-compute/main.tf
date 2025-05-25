@@ -10,7 +10,7 @@ terraform {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "compute/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }
@@ -26,9 +26,10 @@ data "terraform_remote_state" "core" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "core/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 # Look up the latest official Ubuntu 24.04 AMI

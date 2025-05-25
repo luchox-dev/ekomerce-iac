@@ -1,0 +1,6 @@
+aws_region = "us-east-1"
+environment = "prod"
+private_ip = "0.0.0.0"
+redis_username = "backend"
+redis_password = "Prod-Secure-Redis-Password-Here"  # Replace with actual secure password
+meilisearch_master_key = "Prod-Secure-Meilisearch-Key-Here"  # Replace with actual secure key

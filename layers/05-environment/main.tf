@@ -10,7 +10,7 @@ terraform {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "environment/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
 }
@@ -26,9 +26,10 @@ data "terraform_remote_state" "core" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "core/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 data "terraform_remote_state" "compute" {
@@ -37,9 +38,10 @@ data "terraform_remote_state" "compute" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "compute/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 data "terraform_remote_state" "database" {
@@ -48,9 +50,10 @@ data "terraform_remote_state" "database" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "database/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 data "terraform_remote_state" "application" {
@@ -59,9 +62,10 @@ data "terraform_remote_state" "application" {
     bucket         = "ekomerce-terraform-state-bucket"
     key            = "application/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "ekomerce-terraform-locks"
+    use_lockfile   = true
     encrypt        = true
   }
+  workspace = terraform.workspace
 }
 
 # Environment configuration provisioner

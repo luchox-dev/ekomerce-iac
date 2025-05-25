@@ -108,14 +108,24 @@ for layer in "${LAYERS[@]}"; do
   
   echo "Working in directory: $(pwd)" | tee -a "$LOG_FILE"
   
+  # Get the environment from first parameter or use dev as default
+  ENVIRONMENT=${1:-dev}
+  
   # Initialize Terraform with backend configuration
   if terraform init \
     -backend-config="bucket=$BUCKET_NAME" \
     -backend-config="region=$REGION" \
-    -backend-config="dynamodb_table=$DYNAMO_TABLE" | tee -a "$LOG_FILE"; then
+    -backend-config="use_lockfile=true" \
+    -migrate-state | tee -a "$LOG_FILE"; then
     
-    echo "Layer $layer initialized successfully." | tee -a "$LOG_FILE"
-    ((SUCCESSFUL_LAYERS++))
+    # Select or create workspace for the environment
+    if terraform workspace select $ENVIRONMENT 2>/dev/null || terraform workspace new $ENVIRONMENT; then
+      echo "Using workspace: $ENVIRONMENT" | tee -a "$LOG_FILE"
+      echo "Layer $layer initialized successfully." | tee -a "$LOG_FILE"
+      ((SUCCESSFUL_LAYERS++))
+    else
+      echo "ERROR: Failed to select or create workspace $ENVIRONMENT" | tee -a "$LOG_FILE"
+    fi
   else
     echo "ERROR: Failed to initialize layer $layer" | tee -a "$LOG_FILE"
   fi
